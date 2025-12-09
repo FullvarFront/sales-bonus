@@ -1,24 +1,19 @@
-// --- Предполагаемые функции и структуры ---
+// --- Функции расчета ---
 
-// Функция для расчета выручки
 function calculateSimpleRevenue(purchaseItem) {
-  // purchaseItem.sale_price - это цена за единицу товара в этом конкретном чеке.
-  // Если бы price могло быть в productInfo, мы бы использовали productInfo.sale_price.
-  // Но для item-специфичной выручки, берем из item.
   const basePricePerUnit = purchaseItem.sale_price || 0;
   const quantity = purchaseItem.quantity || 0;
-  const discountPercentage = purchaseItem.discount || 0; // Это процент, например, 7.68
+  const discountPercentage = purchaseItem.discount || 0;
   const discountFactor = 1 - discountPercentage / 100;
   return basePricePerUnit * quantity * discountFactor;
 }
 
-// Функция для расчета бонуса
 function calculateBonusByProfit(index, total, seller) {
   if (total === 0) return 0;
   const lastIndex = total - 1;
   if (index === 0) return 0.15;
-  if (index === 1 || index === 2) return 0.1; // Исправлено на ||
-  if (index === lastIndex) return 0.0; // Последний не получает бонус
+  if (index === 1 || index === 2) return 0.1;
+  if (index === lastIndex) return 0.0;
   return 0.05;
 }
 
@@ -33,10 +28,13 @@ function analyzeSalesData(data, options = {}) {
   ) {
     throw new Error("Некорректные входные данные");
   }
+
+  // Используем _наши_ дефолтные функции, если опции не переданы
   const {
     calculateRevenue = calculateSimpleRevenue,
     calculateBonus = calculateBonusByProfit,
   } = options;
+
   if (
     typeof calculateRevenue !== "function" ||
     typeof calculateBonus !== "function"
@@ -48,7 +46,7 @@ function analyzeSalesData(data, options = {}) {
   const sellerIndex = Object.create(null);
   data.sellers.forEach((seller) => {
     sellerIndex[seller.id] = {
-      id: seller.id, // Используем 'id' для внутреннего использования
+      id: seller.id,
       first_name: seller.first_name,
       last_name: seller.last_name,
       position: seller.position,
@@ -56,7 +54,7 @@ function analyzeSalesData(data, options = {}) {
       revenue: 0,
       cost: 0,
       profit: 0,
-      products_sold: Object.create(null), // { sku: { quantity: N, total_revenue: R } } - изменена структура
+      products_sold: Object.create(null), // { sku: { quantity: N, total_revenue: R } }
     };
   });
 
@@ -67,7 +65,8 @@ function analyzeSalesData(data, options = {}) {
 
   // Агрегация данных
   data.purchase_records.forEach((record) => {
-    const sellerId = record.seller_id; // ИСПРАВЛЕНО: с record.sellerId на record.seller_id
+    // ИСПРАВЛЕНО: с record.sellerId на record.seller_id
+    const sellerId = record.seller_id;
     const seller = sellerIndex[sellerId];
     if (!seller) return; // Пропустить, если продавца нет
 
@@ -81,8 +80,9 @@ function analyzeSalesData(data, options = {}) {
       const product = productIndex[item.sku];
       if (!product) return; // Пропустить, если товара нет
 
-      const revenue = calculateRevenue(item, product); // Выручка по позиции
-      const cost = (product.purchase_price || 0) * item.quantity; // ИСПРАВЛЕНО: с на ||
+      const revenue = calculateRevenue(item); // Выручка по позиции (productInfo не нужен здесь)
+      // ИСПРАВЛЕНО: с на ||
+      const cost = (product.purchase_price || 0) * item.quantity; // Себестоимость позиции
       const profit = revenue - cost;
 
       currentRecordRevenue += revenue;
@@ -130,7 +130,7 @@ function analyzeSalesData(data, options = {}) {
     productArray.sort((a, b) => b.quantity - a.quantity);
     seller.top_products = productArray.slice(0, 10);
 
-    return seller; // ИСПРАВЛЕНО: Добавлен return seller;
+    return seller; // Возвращаем модифицированный объект продавца
   });
 
   // --- Форматирование финального отчета ---
@@ -143,7 +143,8 @@ function analyzeSalesData(data, options = {}) {
 
       return {
         seller_id: seller.id,
-        name: `${seller.first_name} ${seller.last_name}`, // ИСПРАВЛЕНО: Объединение имени и фамилии
+        // ИСПРАВЛЕНО: Объединение имени и фамилии
+        name: `${seller.first_name} ${seller.last_name}`,
         revenue: formattedRevenue,
         profit: formattedProfit,
         sales_count: seller.sales_count,
@@ -162,22 +163,35 @@ function analyzeSalesData(data, options = {}) {
   return finalReport; // Возвращаем окончательный отчет
 }
 
-// Вызов функции с данными
-const finalReport = analyzeSalesData(sampleData);
+// --- Экспорт функций для использования в других модулях (например, в тестах) ---
+module.exports = {
+  analyzeSalesData,
+  calculateSimpleRevenue,
+  calculateBonusByProfit,
+};
 
-// Вывод в консоль в табличном виде, как на скриншоте
-console.table(
-  finalReport.map((s) => ({
-    seller_id: s.seller_id,
-    name: s.name,
-    revenue: parseFloat(s.revenue), // Для console.table лучше передавать числа, чтобы она не добавляла кавычки
-    profit: parseFloat(s.profit),
-    sales_count: s.sales_count,
-    top_products: s.top_products, // console.table отобразит как "Array(10)"
-    bonus: parseFloat(s.bonus),
-  }))
-);
+// --- Код для локального запуска (если вы запустите этот файл напрямую) ---
+if (require.main === module) {
+  console.log("Запуск analyzeSalesData с локальными данными...");
+  try {
+    const finalReport = analyzeSalesData(sampleDataForLocalRun);
+    console.log("--- Финальный отчет ---");
+    // Используем console.table для красивого вывода, как в скриншоте
+    console.table(
+      finalReport.map((s) => ({
+        seller_id: s.seller_id,
+        name: s.name,
+        revenue: parseFloat(s.revenue), // Для console.table лучше числа
+        profit: parseFloat(s.profit),
+        sales_count: s.sales_count,
+        top_products: s.top_products, // Будет отображено как Array(N)
+        bonus: parseFloat(s.bonus),
+      }))
+    );
 
-// Для дополнительной проверки, вы можете развернуть один из элементов в консоли
-console.log("Полная структура первого продавца:");
-console.dir(finalReport[0], { depth: null });
+    console.log("\n--- Полная структура первого продавца (для отладки) ---");
+    console.dir(finalReport[0], { depth: null }); // Показать всю структуру
+  } catch (error) {
+    console.error("Произошла ошибка при локальном запуске:", error);
+  }
+}
