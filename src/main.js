@@ -4,22 +4,26 @@ function calculateSimpleRevenue(purchase, _product) {
   return revenue;
 }
 
+// ⚠️ ИСПРАВЛЕНО: Должна возвращать СУММУ бонуса, а не процент!
 function calculateBonusByProfit(index, total, seller) {
   const { profit } = seller;
 
+  let bonusPercent;
+
   if (index === 0) {
-    return 15;
+    bonusPercent = 0.15; // 15%
+  } else if (index === 1 || index === 2) {
+    bonusPercent = 0.1; // 10%
+  } else if (index === total - 1) {
+    bonusPercent = 0; // 0%
+  } else {
+    bonusPercent = 0.05; // 5%
   }
-  if (index === 1 || index === 2) {
-    return 10;
-  }
-  if (index === total - 1) {
-    return 0;
-  }
-  return 5;
+
+  // ⚠️ Возвращаем СУММУ в рублях, а не процент!
+  return profit * bonusPercent;
 }
 
-// ⚠️ ВАЖНО: Должна называться analyzeSalesData, а не calculateBonuses!
 function analyzeSalesData(data, options) {
   // Проверка options
   if (typeof options !== "object" || options === null) {
@@ -41,12 +45,23 @@ function analyzeSalesData(data, options) {
     throw new Error("calculateRevenue и calculateBonus должны быть функциями");
   }
 
-  // Проверка данных
-  if (!data) {
+  // ⚠️ УСИЛЕННЫЕ ПРОВЕРКИ ДАННЫХ:
+  if (!data || typeof data !== "object") {
     throw new Error("Некорректные входные данные");
   }
 
+  // Проверяем sellers
   if (!Array.isArray(data.sellers) || data.sellers.length === 0) {
+    throw new Error("Некорректные входные данные");
+  }
+
+  // ⚠️ ПРОВЕРЯЕМ products (должен быть массив, даже пустой)
+  if (!Array.isArray(data.products)) {
+    throw new Error("Некорректные входные данные");
+  }
+
+  // ⚠️ ПРОВЕРЯЕМ purchase_records (должен быть массив, даже пустой)
+  if (!Array.isArray(data.purchase_records)) {
     throw new Error("Некорректные входные данные");
   }
 
@@ -73,7 +88,7 @@ function analyzeSalesData(data, options) {
     productIndex[product.sku] = product;
   });
 
-  // Основной цикл
+  // Основной цикл (только если есть purchase_records)
   data.purchase_records.forEach((record) => {
     const seller = sellerIndex[record.seller_id];
     if (!seller) return;
@@ -103,8 +118,8 @@ function analyzeSalesData(data, options) {
 
   // Расчёт бонусов
   sellerStats.forEach((seller, index) => {
-    const bonusPercent = calculateBonus(index, sellerStats.length, seller);
-    seller.bonus = (seller.profit * bonusPercent) / 100;
+    // ⚠️ Теперь calculateBonus возвращает уже сумму бонуса!
+    seller.bonus = calculateBonus(index, sellerStats.length, seller);
 
     // Формирование top_products
     seller.top_products = Object.entries(seller.products_sold)
@@ -112,7 +127,6 @@ function analyzeSalesData(data, options) {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10);
 
-    // Очищаем временный объект (опционально)
     delete seller.products_sold;
   });
 
@@ -128,11 +142,11 @@ function analyzeSalesData(data, options) {
   }));
 }
 
-// ⚠️ ВАЖНО: Экспорт для тестов
+// Экспорт для тестов
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     calculateSimpleRevenue,
     calculateBonusByProfit,
-    analyzeSalesData, // ← именно так, как ищут тесты
+    analyzeSalesData,
   };
 }
