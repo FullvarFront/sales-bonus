@@ -4,23 +4,21 @@ function calculateSimpleRevenue(purchase, _product) {
   return revenue;
 }
 
-// ⚠️ ИСПРАВЛЕНО: Должна возвращать СУММУ бонуса, а не процент!
 function calculateBonusByProfit(index, total, seller) {
   const { profit } = seller;
 
   let bonusPercent;
 
   if (index === 0) {
-    bonusPercent = 0.15; // 15%
+    bonusPercent = 0.15;
   } else if (index === 1 || index === 2) {
-    bonusPercent = 0.1; // 10%
+    bonusPercent = 0.1;
   } else if (index === total - 1) {
-    bonusPercent = 0; // 0%
+    bonusPercent = 0;
   } else {
-    bonusPercent = 0.05; // 5%
+    bonusPercent = 0.05;
   }
 
-  // ⚠️ Возвращаем СУММУ в рублях, а не процент!
   return profit * bonusPercent;
 }
 
@@ -45,23 +43,32 @@ function analyzeSalesData(data, options) {
     throw new Error("calculateRevenue и calculateBonus должны быть функциями");
   }
 
-  // ⚠️ УСИЛЕННЫЕ ПРОВЕРКИ ДАННЫХ:
+  // ⚠️ ПРОВЕРКА ДАННЫХ С ВЫБРОСОМ ТОЧНЫХ ОШИБОК
   if (!data || typeof data !== "object") {
     throw new Error("Некорректные входные данные");
   }
 
-  // Проверяем sellers
-  if (!Array.isArray(data.sellers) || data.sellers.length === 0) {
+  // 1. Проверяем sellers
+  if (!Array.isArray(data.sellers)) {
+    throw new Error("Некорректные входные данные");
+  }
+  if (data.sellers.length === 0) {
     throw new Error("Некорректные входные данные");
   }
 
-  // ⚠️ ПРОВЕРЯЕМ products (должен быть массив, даже пустой)
+  // ⚠️ 2. Проверяем products (должен быть массив и не пустой!)
   if (!Array.isArray(data.products)) {
     throw new Error("Некорректные входные данные");
   }
+  if (data.products.length === 0) {
+    throw new Error("Некорректные входные данные");
+  }
 
-  // ⚠️ ПРОВЕРЯЕМ purchase_records (должен быть массив, даже пустой)
+  // ⚠️ 3. Проверяем purchase_records (должен быть массив и не пустой!)
   if (!Array.isArray(data.purchase_records)) {
+    throw new Error("Некорректные входные данные");
+  }
+  if (data.purchase_records.length === 0) {
     throw new Error("Некорректные входные данные");
   }
 
@@ -88,7 +95,7 @@ function analyzeSalesData(data, options) {
     productIndex[product.sku] = product;
   });
 
-  // Основной цикл (только если есть purchase_records)
+  // Основной цикл
   data.purchase_records.forEach((record) => {
     const seller = sellerIndex[record.seller_id];
     if (!seller) return;
@@ -118,7 +125,6 @@ function analyzeSalesData(data, options) {
 
   // Расчёт бонусов
   sellerStats.forEach((seller, index) => {
-    // ⚠️ Теперь calculateBonus возвращает уже сумму бонуса!
     seller.bonus = calculateBonus(index, sellerStats.length, seller);
 
     // Формирование top_products
