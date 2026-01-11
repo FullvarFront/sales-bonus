@@ -41,7 +41,8 @@ function calculateBonusByProfit(index, total, seller) {
  * @param options
  * @returns {{revenue, top_products, bonus, name, sales_count, profit, seller_id}[]}
  */
-function analyzeSalesData(data, options) {
+function calculateBonuses(data, options) {
+  // ← ИМЯ ФУНКЦИИ ДОЛЖНО БЫТЬ calculateBonuses
   // @TODO: Проверка входных данных
 
   if (!data || !Array.isArray(data.sellers) || data.sellers.length === 0) {
@@ -127,6 +128,7 @@ function analyzeSalesData(data, options) {
 
   // @TODO: Сортировка продавцов по прибыли
   sellerStats.sort((a, b) => b.profit - a.profit);
+
   // @TODO: Назначение премий на основе ранжирования
   sellerStats.forEach((seller, index) => {
     // 1. Расчёт процента бонуса
@@ -142,6 +144,7 @@ function analyzeSalesData(data, options) {
       .slice(0, 10);
   });
 
+  // @TODO: Подготовка итоговой коллекции с нужными полями
   return sellerStats.map((seller) => ({
     seller_id: seller.seller_id,
     name: seller.name,
@@ -151,6 +154,4 @@ function analyzeSalesData(data, options) {
     top_products: seller.top_products,
     bonus: +seller.bonus.toFixed(2),
   }));
-  // @TODO: Подготовка итоговой коллекции с нужными полями
 }
-console.log(data.sellers[0]);
